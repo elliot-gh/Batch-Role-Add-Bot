@@ -104,7 +104,7 @@ export class BatchRoleBot extends BotWithConfig {
                 }
 
                 for (const message of messages.values()) {
-                    if (userIdAdded[message.author.id] !== undefined) {
+                    if (userIdAdded[message.author.id] !== undefined || message.author.bot) {
                         continue;
                     }
 
@@ -143,7 +143,7 @@ export class BatchRoleBot extends BotWithConfig {
 
         let message = `Added roles to ${Object.keys(userIdAdded).length} users.\nFailed to add to ${failedCount} users.\n`;
         for (const channelId in channelToUserCount) {
-            message += `\n$<#${channelId}> had ${channelToUserCount[channelId]} unique new users.`;
+            message += `\n<#${channelId}> had ${channelToUserCount[channelId]} unique new users.`;
         }
 
         this.logger.info(message);
