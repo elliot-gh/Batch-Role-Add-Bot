@@ -26,7 +26,7 @@ export class BatchRoleBot extends BotWithConfig {
             .addSubcommand(subcommand =>
                 subcommand
                     .setName(BatchRoleBot.SUBCMD_ADD)
-                    .setDescription("Add roles to multiple users in config")
+                    .setDescription("Add a role to multiple users in config")
                     .addRoleOption(option =>
                         option
                             .setName(BatchRoleBot.OPT_ROLE)
@@ -85,7 +85,7 @@ export class BatchRoleBot extends BotWithConfig {
 
         const embed = new EmbedBuilder()
             .setTitle("Batch Role Add Operation")
-            .setDescription(`Added role ${roleOpt.name} to ${added} users.\nFailed to add to ${failedCount} users, check logs.`);
+            .setDescription(`Added role ${roleOpt.name} to ${added} users.\nFailed to add to ${failedCount} users.`);
         await interaction.editReply({ embeds: [embed] });
     }
 }
