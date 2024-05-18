@@ -71,7 +71,12 @@ export class BatchRoleBot extends BotWithConfig {
         let added = 0;
         let failedCount = 0;
         const failedArr: string[] = [];
-        for (const userId of this.config.userIds) {
+        const set = new Set<string>();
+        this.config.userIds.forEach(element => {
+            set.add(element);
+        });
+
+        for (const userId of set) {
             try {
                 const member = await interaction.guild!.members.fetch(userId);
                 await member.roles.add(roleOpt.id);
@@ -85,7 +90,7 @@ export class BatchRoleBot extends BotWithConfig {
 
         const embed = new EmbedBuilder()
             .setTitle("Batch Role Add Operation")
-            .setDescription(`Added role ${roleOpt.name} to ${added} users.\nFailed to add to ${failedCount} users.`);
+            .setDescription(`Config had ${set.size} unique user IDs.\nAdded role ${roleOpt.name} to ${added} users.\nFailed to add to ${failedCount} users.`);
         await interaction.editReply({ embeds: [embed] });
     }
 }
