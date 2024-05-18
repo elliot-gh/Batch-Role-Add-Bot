@@ -1,0 +1,6 @@
+# Copy this file as "config.yaml", and fill in the values as appropriate.
+# ------------------------------------------------------------------------------
+
+userIds:
+- '123'
+- '456'

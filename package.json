@@ -1,0 +1,13 @@
+{
+  "name": "batch-role-add-discord-bot",
+  "version": "1.0.0",
+  "repository": "git@github.com:elliot-gh/Batch-Role-Add-Bot.git",
+  "author": "Elliot",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "packageManager": "yarn@3.5.1",
+  "engines": {
+    "node": ">=18.15.0"
+  }
+}
