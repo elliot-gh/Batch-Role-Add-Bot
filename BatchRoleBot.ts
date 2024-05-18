@@ -116,7 +116,7 @@ export class BatchRoleBot extends BotWithConfig {
 
             for (const userId of currentUserIds) {
                 try {
-                    const user = interaction.guild.members.cache.get(userId);
+                    const user = await interaction.guild.members.fetch(userId);
                     if (user === undefined) {
                         this.logger.warn(`User ${userId} not found`);
                         userIdFailed[userId] = true;
