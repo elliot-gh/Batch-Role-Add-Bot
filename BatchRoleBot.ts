@@ -125,6 +125,11 @@ export class BatchRoleBot extends BotWithConfig {
 
                     await user.roles.add(roleOpt.id);
                     userIdAdded[userId] = true;
+                    this.logger.info(`Added role to user ${userId}`);
+
+                    if (userIdFailed[userId] !== undefined && userIdFailed[userId]) {
+                        userIdFailed[userId] = false;
+                    }
                 } catch (error) {
                     this.logger.error(`Failed to add role to user ${userId}: ${error}`);
                     userIdFailed[userId] = true;
