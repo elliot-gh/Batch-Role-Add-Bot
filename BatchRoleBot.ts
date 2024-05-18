@@ -1,11 +1,12 @@
 import {
-    ChatInputCommandInteraction, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, GatewayIntentBits, SlashCommandBuilder
+    ChatInputCommandInteraction, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, FetchMessagesOptions, GatewayIntentBits, SlashCommandBuilder
 } from "discord.js";
 import { BotWithConfig } from "../../BotWithConfig";
 
 export type BatchRoleConfig = {
-    userIds: string[]
+    channelIds: string[]
 }
+
 export class BatchRoleBot extends BotWithConfig {
     private static readonly CMD_BATCH = "batchroles";
     private static readonly SUBCMD_ADD = "add";
@@ -66,34 +67,91 @@ export class BatchRoleBot extends BotWithConfig {
     }
 
     private async handleBatchAdd(interaction: ChatInputCommandInteraction): Promise<void> {
-        await interaction.deferReply();
-        const roleOpt = interaction.options.getRole(BatchRoleBot.OPT_ROLE, true);
-        let added = 0;
-        let failedCount = 0;
-        const failedArr: string[] = [];
-        const set = new Set<string>();
-        this.config.userIds.forEach(element => {
-            set.add(element);
-        });
-        this.logger.info(`Adding role ${roleOpt.name} to ${set.size} users.`);
+        if (interaction.guild == null) {
+            return;
+        }
 
-        for (const userId of set) {
-            try {
-                const member = await interaction.guild!.members.fetch(userId);
-                await member.roles.add(roleOpt.id);
-                this.logger.info(`Added role ${roleOpt.name} to user ${userId}`);
-                added++;
-            } catch (error) {
-                this.logger.error(`Error adding role to user ${userId}: ${error}`);
+        const replyChannel = interaction.channel;
+        const roleOpt = interaction.options.getRole(BatchRoleBot.OPT_ROLE, true);
+        await interaction.reply("starting");
+
+        const userIdAdded: { [id: string]: boolean } = {};
+        const userIdFailed: { [id: string]: boolean } = {};
+        const channelToUserCount: { [id: string]: number } = {};
+        for (const channelId of this.config.channelIds) {
+            this.logger.info(`Fetching users who have sent messages in channel ${channelId}`);
+
+            const channel = await interaction.guild.channels.fetch(channelId);
+            if (!channel?.isTextBased()) {
+                this.logger.warn(`Channel ${channelId} is not text-based`);
+                continue;
+            }
+
+            const currentUserIds = new Set<string>();
+            let lastMessageId: string | null = null;
+
+            // eslint-disable-next-line no-constant-condition
+            while (true)
+            {
+                const options: FetchMessagesOptions = { limit: 100 };
+                if (lastMessageId != null) {
+                    options.before = lastMessageId;
+                }
+
+                const messages = await channel.messages.fetch(options);
+                if (messages.size === 0) {
+                    break;
+                }
+
+                for (const message of messages.values()) {
+                    if (userIdAdded[message.author.id] !== undefined) {
+                        continue;
+                    }
+
+                    currentUserIds.add(message.author.id);
+                }
+
+                lastMessageId = messages.last()!.id;
+            }
+
+            for (const userId of currentUserIds) {
+                try {
+                    const user = interaction.guild.members.cache.get(userId);
+                    if (user === undefined) {
+                        this.logger.warn(`User ${userId} not found`);
+                        userIdFailed[userId] = true;
+                        continue;
+                    }
+
+                    await user.roles.add(roleOpt.id);
+                    userIdAdded[userId] = true;
+                } catch (error) {
+                    this.logger.error(`Failed to add role to user ${userId}: ${error}`);
+                    userIdFailed[userId] = true;
+                }
+            }
+
+            channelToUserCount[channelId] = currentUserIds.size;
+        }
+
+        let failedCount = 0;
+        for (const userId in userIdFailed) {
+            if (userIdFailed[userId] !== undefined && userIdFailed[userId]) {
                 failedCount++;
-                failedArr.push(userId);
             }
         }
 
+        let message = `Added roles to ${Object.keys(userIdAdded).length} users.\nFailed to add to ${failedCount} users.\n`;
+        for (const channelId in channelToUserCount) {
+            message += `\n$<#${channelId}> had ${channelToUserCount[channelId]} unique new users.`;
+        }
+
+        this.logger.info(message);
+
         const embed = new EmbedBuilder()
-            .setTitle("Batch Role Add Operation")
-            .setDescription(`Config had ${set.size} unique user IDs.\nAdded role ${roleOpt.name} to ${added} users.\nFailed to add to ${failedCount} users.`);
-        await interaction.editReply({ embeds: [embed] });
+            .setTitle("Batch role add results")
+            .setDescription(message);
+        await replyChannel!.send({ embeds: [embed] });
     }
 }
 
