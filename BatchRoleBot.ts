@@ -75,11 +75,13 @@ export class BatchRoleBot extends BotWithConfig {
         this.config.userIds.forEach(element => {
             set.add(element);
         });
+        this.logger.info(`Adding role ${roleOpt.name} to ${set.size} users.`);
 
         for (const userId of set) {
             try {
                 const member = await interaction.guild!.members.fetch(userId);
                 await member.roles.add(roleOpt.id);
+                this.logger.info(`Added role ${roleOpt.name} to user ${userId}`);
                 added++;
             } catch (error) {
                 this.logger.error(`Error adding role to user ${userId}: ${error}`);
