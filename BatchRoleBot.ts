@@ -19,7 +19,7 @@ export class BatchRoleBot extends BotWithConfig {
     constructor() {
         super("RoleIconBot", import.meta);
         this.config = this.readYamlConfig<BatchRoleConfig>("config.yaml");
-        this.intents = [GatewayIntentBits.Guilds | GatewayIntentBits.GuildModeration];
+        this.intents = [GatewayIntentBits.Guilds | GatewayIntentBits.GuildMembers | GatewayIntentBits.GuildModeration];
         const slashBatch = new SlashCommandBuilder()
             .setName(BatchRoleBot.CMD_BATCH)
             .setDescription("Batch role operations")
@@ -137,6 +137,7 @@ export class BatchRoleBot extends BotWithConfig {
         let failedCount = 0;
         for (const userId in userIdFailed) {
             if (userIdFailed[userId] !== undefined && userIdFailed[userId]) {
+                this.logger.warn(`Failed to add role to user ${userId}`);
                 failedCount++;
             }
         }
