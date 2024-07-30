@@ -1,23 +1,23 @@
 import {
-    ChatInputCommandInteraction, CommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, FetchMessagesOptions, GatewayIntentBits, SlashCommandBuilder
+    ChatInputCommandInteraction, ContextMenuCommandBuilder, EmbedBuilder, FetchMessagesOptions, GatewayIntentBits, Interaction, SlashCommandBuilder
 } from "discord.js";
-import { BotWithConfig } from "../../BotWithConfig";
+import { BaseBotWithConfig } from "../../../interfaces/BaseBotWithConfig.js";
+import { EventHandlerDict } from "../../../interfaces/IBot.js";
+import { ShouldIgnoreEvent } from "../../../utils/DiscordUtils.js";
+import { BatchRoleConfig } from "./BatchRoleConfig.js";
 
-export type BatchRoleConfig = {
-    channelIds: string[]
-}
-
-export class BatchRoleBot extends BotWithConfig {
+export class BatchRoleBot extends BaseBotWithConfig {
     private static readonly CMD_BATCH = "batchroles";
     private static readonly SUBCMD_ADD = "add";
     private static readonly OPT_ROLE = "role";
+    private static readonly OPT_CONFIRM = "confirm";
 
     protected readonly intents: GatewayIntentBits[];
     protected readonly commands: [SlashCommandBuilder];
     private readonly config: BatchRoleConfig;
 
     constructor() {
-        super("RoleIconBot", import.meta);
+        super("BatchRoleBot", import.meta);
         this.config = this.readYamlConfig<BatchRoleConfig>("config.yaml");
         this.intents = [GatewayIntentBits.Guilds | GatewayIntentBits.GuildMembers | GatewayIntentBits.GuildModeration];
         const slashBatch = new SlashCommandBuilder()
@@ -27,15 +27,27 @@ export class BatchRoleBot extends BotWithConfig {
             .addSubcommand(subcommand =>
                 subcommand
                     .setName(BatchRoleBot.SUBCMD_ADD)
-                    .setDescription("Add a role to multiple users in config")
+                    .setDescription("Add a role to multiple users in config. NO CONFIRMATION, BE CAREFUL ABOUT ROLE PERMISSIONS!")
                     .addRoleOption(option =>
                         option
                             .setName(BatchRoleBot.OPT_ROLE)
                             .setDescription("The role to add")
                             .setRequired(true)
                     )
+                    .addBooleanOption(option =>
+                        option
+                            .setName(BatchRoleBot.OPT_CONFIRM)
+                            .setDescription("ARE YOU SURE ABOUT THE ROLE YOU PICKED")
+                            .setRequired(true)
+                    )
             ) as SlashCommandBuilder;
         this.commands = [slashBatch];
+    }
+
+    getEventHandlers(): EventHandlerDict {
+        return {
+            interactionCreate: this.processInteraction.bind(this)
+        };
     }
 
     getIntents(): GatewayIntentBits[] {
@@ -46,15 +58,15 @@ export class BatchRoleBot extends BotWithConfig {
         return this.commands;
     }
 
-    async processCommand(interaction: CommandInteraction): Promise<void> {
-        if (!interaction.isChatInputCommand() ||
-            interaction.user.bot ||
-            interaction.user.id === interaction.client.user.id ||
-            interaction.commandName !== BatchRoleBot.CMD_BATCH) {
+    async processInteraction(interaction: Interaction): Promise<void> {
+        if (ShouldIgnoreEvent(interaction) || !interaction.isChatInputCommand()) {
             return;
         }
 
-        this.logger.info(`got interaction: ${interaction}`);
+        await this.processCommand(interaction);
+    }
+
+    private async processCommand(interaction: ChatInputCommandInteraction): Promise<void> {
         try {
             switch(interaction.options.getSubcommand()) {
                 case BatchRoleBot.SUBCMD_ADD:
@@ -71,8 +83,17 @@ export class BatchRoleBot extends BotWithConfig {
             return;
         }
 
+        this.logger.info(`handleBatchAdd() got interaction: ${interaction} from: ${interaction.user.id}`);
+
         const replyChannel = interaction.channel;
         const roleOpt = interaction.options.getRole(BatchRoleBot.OPT_ROLE, true);
+        const confirmOpt = interaction.options.getBoolean(BatchRoleBot.OPT_CONFIRM, true);
+        if (!confirmOpt) {
+            this.logger.warn(`User ${interaction.user.id} did not confirm`);
+            await interaction.reply("confirm was false, not running");
+            return;
+        }
+
         await interaction.reply("starting");
 
         const userIdAdded: { [id: string]: boolean } = {};
@@ -160,5 +181,3 @@ export class BatchRoleBot extends BotWithConfig {
         await replyChannel!.send({ embeds: [embed] });
     }
 }
-
-export default new BatchRoleBot();

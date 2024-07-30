@@ -1,6 +1,8 @@
 # Copy this file as "config.yaml", and fill in the values as appropriate.
 # ------------------------------------------------------------------------------
 
+# must be an array of strings, NOT NUMBERS
+# basically, surround with quotes
 channelIds:
 - '123'
 - '456'
